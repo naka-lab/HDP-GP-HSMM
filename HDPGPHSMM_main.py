@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import os
 
 def learn( savedir ):
-    gpsegm = GPSegmentation(2,1.0,10.0) #dim gamma eta
+    gpsegm = GPSegmentation(2, 1.0, 10.0) #dim, gamma, eta
 
-    files =  [ "testdata2d_%03d.txt" % j for j in range(4) ]
+    files =  [ "testdata2d_%03d.txt" % j for j in range(5) ]
     gpsegm.load_data( files )
     liks = []
     
