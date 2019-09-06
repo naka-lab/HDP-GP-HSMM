@@ -414,20 +414,16 @@ class GPSegmentation():
                 self.calc_trans_prob()
 
             start = time.clock()
-            #print ("forward...")
             print ( "forward...", end="" )
             a = self.forward_filtering( d )
 
-            #print ("backward...")
             print( "backward...", end="" )
             segm, segm_class = self.backward_sampling( a, d )
             print( time.clock()-start, "sec" )
 
-            #print ("Number of classified segments: [")
             print( "Number of classified segments: [", end="")
             for s in self.segm_in_class:
                 print( len(s), end=" " )
-                #print (len(s))
             print( "]" )
             counters[i]+=self.counter
 
@@ -451,57 +447,6 @@ class GPSegmentation():
 
         return
 
-    """
-    def learn(self):
-        counters = np.zeros(len(self.segments))
-        
-        for i in range(len(self.segments)):
-            print ("slice sampling")
-            self.sample_num_states()
-            
-            d = self.data[i]
-            segm = self.segments[i]
-            
-            # 学習データから各シーケンス毎に削除
-            for s in segm:
-                c = self.segmclass[id(s)]
-                self.segm_in_class[c].remove( s )
-                self.segmclass.pop( id(s) )
-
-            # GP更新
-            for c in range(self.numclass):
-                self.update_gp( c )
-
-            # 遷移確率更新
-            self.calc_trans_prob()
-
-            print ("forward")
-            #start_time = time.time()
-            a = self.forward_filtering( d )
-            #elapsed_time = time.time() - start_time
-            #print "forward所要時間:",elapsed_time
-
-            print ("backward")
-            segm, segm_class = self.backward_sampling( a, d )
-            counters[i]+=self.counter
-            # パラメータ更新
-            self.segments[i] = segm
-            for s,c in zip( segm, segm_class ):
-                self.segm_in_class[c].append(s)
-                self.segmclass[id(s)] = c
-
-            for c in range(self.numclass):
-                print ("class:%d  segm_num:%d"%(c,len(self.segm_in_class[c]))),
-            
-            # GP更新
-            for c in range(self.numclass):
-                self.update_gp( c )
-
-            # 遷移確率更新
-            self.calc_trans_prob()
-            
-        return counters
-    """
 
     #log
     def calc_lik(self):
@@ -523,100 +468,3 @@ class GPSegmentation():
     def recog(self):
         self.update(False)
 
-
-#####################################################################################
-#####################################################################################
-"""
-def segmentation( dirname, z_s ,latent_num, num_gib):
-    
-        liks = []
-        num_class = []
-        gpsegm = GPSegmentation(latent_num,1.0,10.0) #dim,gamma,alpha
-        gpsegm.load_data(z_s)
-
-        lik = gpsegm.calc_lik()
-        liks.append( lik )
-        
-        learn_num = num_gib
-        for it in range(learn_num):
-    
-            counters = gpsegm.learn()
-            np.savetxt(os.path.join( dirname,"counter_%d.txt"%it),counters)
-            lik = gpsegm.calc_lik()
-            liks.append( lik )
-            print (liks)
-    
-            num_class.append( gpsegm.get_num_class() )
-            #print (num_class)
-    	
-        with lock:
-            plt.clf()
-            plt.ylim(-18000, 1000)
-            plt.plot( range(len(liks)), liks )
-            #plt.show()
-            plt.savefig( os.path.join( dirname,"lik.png") )
-            plt.clf()
-            
-            gpsegm.save( dirname )
-            #plt.show()
-
-        return gpsegm.calc_lik()
-
-
-#####################################################################################
-#####################################################################################
-def main():
-    epoch_num = 1
-    iteration = 2
-    file_num_all = [4]
-    num_gib = 10
-    
-    #segmentation
-    for ll in range(1):
-        file_num = file_num_all[ll]
-        maincode(epoch_num, iteration, file_num,  num_gib)
-    
-      
-
-def maincode(epoch_num, iteration, file_num,  num_gib):
-    #latent space
-    latent_num = 1
-    
-    #14のデータは,14-06は120fpsで5358,000-Copy1～002-Copy1は腰基準済(min_max正規化済み)
-    for iii in range(iteration):
-        #print ('---FOLDER:%d'%(iii) )
-        
-        for it in range(epoch_num):
-            try:
-                os.mkdir("norm_sample_z%d"%(latent_num))
-            except WindowsError:
-            #except FileExistsError:
-                pass
-            
-            try:
-                os.mkdir("norm_sample_z%d\\%03d"%(latent_num,iii))
-            except WindowsError:
-            #except FileExistsError:
-                pass
-                    
-            try:
-                os.mkdir("norm_sample_z%d\\%03d\\epoch%03d"%(latent_num,iii,it))
-            except WindowsError:
-            #except FileExistsError:
-                pass
-                
-            print("-----epoch : %d-----"%it)
-            z_s = []
-            for kk in range(file_num):
-                print (">>file : %d"%kk)
-                z_n = np.loadtxt('data_sample\\long_n%03d.txt'
-                               %(kk))
-                
-                
-                z_s.append(z_n)
-                  
-            lik_ =segmentation("norm_sample_z%d\\%03d\\epoch%03d"%(latent_num,iii,it) ,z_s,latent_num, num_gib)
-            
-if __name__ == '__main__':
-        main()
-"""
