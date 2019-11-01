@@ -30,6 +30,46 @@ majorVersion = int(s[:-2]) - 6
 を使いたいVisual Studioのバージョンに書き換えてください．
 VS2012の場合は，`majorVersion = 11`となります．
 
+### 使用上の注意
+
+使用する際は，以下のハイパーパラメータに注意してください．
+* の付いているパラメータは要変更．
+#### hypara1
+```
+GaussianProcess.pyの
+double covariance_func 関数内の
+
+theta0 ~ theta3
+によってカーネルを決定する．
+
+<default>
+theta0 = 1.0
+theta1 = 1.0
+theta2 = 0.0
+theta3 = 16.0
+```
+#### hypara2
+```
+HDPGPHSMM_segmentation.pyの
+GPSegmentation クラスの
+
+* MAX_LEN: 最大の分節長 K (default: 20)
+* MIN_LEN: 最小の分節長   (default: 3)
+* AVE_LEN: 分節長を決めるポアソン分布のパラメータ (default: 12)
+SKIP_LEN: forward filtering-backward samplingで計算するtの間隔 (default: 1)
+```
+
+#### hypara3
+```
+HDPGPHSMM_main.pyの
+main 関数の
+
+* dim: Input Dataの次元 (default: 2)
+gamma: Stick Breaking ProcessのBeta分布のparameter (default: 1.0)
+eta: Hierarchical Dirichlet processのparameter (default: 10.0)
+```
+
+
 # LICENSE
 This program is freely available for free non-commercial use. 
 If you publish results obtained using this program, please cite:

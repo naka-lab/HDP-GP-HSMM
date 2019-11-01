@@ -6,14 +6,15 @@ import time
 import matplotlib.pyplot as plt
 import os
 
-def learn( savedir ):
-    gpsegm = GPSegmentation(2, 1.0, 10.0) #dim, gamma, eta
+def learn( savedir, dim, gamma, eta ):
+    gpsegm = GPSegmentation( dim, gamma, eta) 
 
-    files =  [ "testdata2d_%03d.txt" % j for j in range(5) ]
+    files =  [ "testdata2dim_%03d.txt" % j for j in range(5) ]
     gpsegm.load_data( files )
     liks = []
     
     start = time.clock()
+    #iteration (default: 10)
     for it in range(10):
         print( "-----", it, "-----" )
         gpsegm.learn()
@@ -25,18 +26,16 @@ def learn( savedir ):
     
     #plot liks
     plt.clf()
-    #plt.ylim(-18000, 1000)
     plt.plot( range(len(liks)), liks )
-    #plt.show()
-    plt.savefig( os.path.join( savedir,"lik.png") )
+    plt.savefig( os.path.join( savedir,"liks.png") )
         
     return gpsegm.calc_lik()
 
 
-def recog( modeldir, savedir ):
-    gpsegm = GPSegmentation(2,1.0,10.0)
+def recog( modeldir, savedir, dim, gamma, eta ):
+    gpsegm = GPSegmentation( dim, gamma, eta)
 
-    gpsegm.load_data( [ "testdata2d_%03d.txt" % j for j in range(4) ] )
+    gpsegm.load_data( [ "testdata2dim_%03d.txt" % j for j in range(4) ] )
     gpsegm.load_model( modeldir )
 
 
@@ -51,8 +50,15 @@ def recog( modeldir, savedir ):
 
 
 def main():
-    learn( "learn/" )
-    #recog( "learn/" , "recog/" )
+    #parameters
+    dim = 2
+    gamma = 1.0
+    eta = 10.0
+    
+    #learn
+    learn( "learn/", dim, gamma, eta )
+    #recognition
+    recog( "learn/", "recog/", dim, gamma, eta )
     return
 
 if __name__=="__main__":

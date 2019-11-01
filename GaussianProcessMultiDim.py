@@ -20,7 +20,6 @@ class GPMD:
         for d in range(self.__dim):
             if len(x)==0:
                 self.__gp[d].learn( x, [] )
-                #self.__gp[d].learn( [], [] )
             else:
                 self.__gp[d].learn( x, y[:,d] )
 

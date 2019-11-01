@@ -24,8 +24,8 @@ from cymath import logsumexp
 class GPSegmentation():
     # parameters
     MAX_LEN = 20
-    MIN_LEN = 5
-    AVE_LEN = 10
+    MIN_LEN = 3
+    AVE_LEN = 12
     SKIP_LEN = 1
     
     def __init__(self, dim, gamma, alpha):
@@ -56,7 +56,6 @@ class GPSegmentation():
         self.is_initialized = False
 
         for z in z_s:
-            #y = np.array(z, dtype=np.float)
             y = np.loadtxt(z, dtype=np.float)
             segm = []
             self.data.append( y )
@@ -116,10 +115,8 @@ class GPSegmentation():
         slen = len(segm)
 
         if len(segm) > 2:
-            #plen = self.AVE_LEN**slen * math.exp(-self.AVE_LEN) / math.factorial(slen)
             log_plen = (slen*math.log(self.AVE_LEN) + (-self.AVE_LEN)*math.log(math.e)) - (sum(np.log(np.arange(1,slen+1))))
             p = gp.calc_lik( np.arange(len(segm), dtype=np.float) , segm )
-            #return p + math.log(plen)
             return p + log_plen
         else:
             return 1.0e-100
@@ -138,10 +135,7 @@ class GPSegmentation():
                 cut_points += [0] * len(s)
                 cut_points[-1] = 1
             np.savetxt( basename+"segm%03d.txt" % n, np.vstack([classes,cut_points]).T, fmt=str("%d") )
-            #np.savetxt( os.path.join( basename, "segm%03d.txt" % n ), classes )
-
-        #plt.figure()
-
+            
         for c in range(len(self.gps)):
             for d in range(self.dim):
                 plt.clf()
@@ -153,22 +147,16 @@ class GPSegmentation():
                         plt.plot( range(len(data[:,d])), data[:,d], "o-" )
                     plt.ylim( -1, 1 )
                 plt.savefig( basename+"class%03d_dim%03d.png" % (c, d) )
-                #plt.savefig( os.path.join( basename,"class%03d_dim%03d.png"% (c, d) ))
                     
         np.save( basename + "trans.npy" , self.trans_prob  )
         np.save( basename + "trans_bos.npy" , self.trans_prob_bos )
         np.save( basename + "trans_eos.npy" , self.trans_prob_eos )
-        np.save( basename + "all_class.txt", self.segm_in_class[c])
-        #np.save( os.path.join( basename, "trans.npy") , self.trans_prob  )
-        #np.save( os.path.join( basename, "trans_bos.npy") , self.trans_prob_bos )
-        #np.save( os.path.join( basename, "trans_eos.npy") , self.trans_prob_eos )
-        #np.savetxt( os.path.join( basename, "allclass.txt") , self.all_numclass )
+        np.save( basename + "all_class.npy", self.segm_in_class[c])
+        
         for c in range(self.numclass):
             np.save( basename+"class%03d.npy" % c, self.segm_in_class[c] )
-            #np.save( os.path.join( basename, "class%03d.npy" % c), self.segm_in_class[c] )
-    
-
-    #nakamura_ver
+            
+            
     def forward_filtering(self, d ):
         T = len(d)
         a = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) - 1.0e-100   # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
@@ -177,7 +165,7 @@ class GPSegmentation():
         
         for t in range(T):
             for k in range(self.MIN_LEN,self.MAX_LEN,self.SKIP_LEN):
-                if t-k<=0:
+                if t-k<0:
                     break
 
                 segm = d[t-k:t+1]
@@ -188,10 +176,6 @@ class GPSegmentation():
                     # 遷移確率
                     tt = t-k-1
                     if tt>=0:
-                        #for kk in range(self.MAX_LEN):
-                        #    for cc in range(self.numclass):
-                        #        foward_prob += a[tt,kk,cc] * self.trans_prob[cc, c]
-                        #foward_prob = math.log(np.sum( a[tt,:,:] * self.trans_prob[:,c] )) + out_prob
                         foward_prob = logsumexp( a[tt,:,:] + z[tt] + np.log(self.trans_prob[:,c]) ) + out_prob
                     else:
                         # 最初の単語
@@ -207,12 +191,10 @@ class GPSegmentation():
                     if math.isnan(foward_prob):
                         print( "a[t=%d,k=%d,c=%d] became NAN!!" % (t,k,c) )
                         sys.exit(-1)
-                    #print (np.exp(a[t,k,c]))
             # 正規化
             if t-self.MIN_LEN>=0:
                 z[t] = logsumexp( a[t,:,:] )
                 a[t,:,:] -= z[t]
-                #a[t,:,:] = np.exp(a[t,:,:] - z[t])
                 
         return np.exp(a)*valid
     
@@ -252,8 +234,6 @@ class GPSegmentation():
                 s = d[t-k:t+1]
             
             # パラメータ更新
-            #self.segm_in_class[c].append(s)
-            #self.segmclass[id(s)] = c
             segm.insert( 0, s )
             segm_class.insert( 0, c )
             
@@ -354,9 +334,7 @@ class GPSegmentation():
 
         self.beta = np.array( beta )
 
-        #print ("beta", self.beta)
         self.all_numclass.append(self.numclass)
-        #print (self.numclass)
         
         
     # list.remove( elem )だとValueErrorになる
@@ -389,7 +367,6 @@ class GPSegmentation():
 
 
     def update(self, learning_phase=True ):
-        counters = np.zeros(len(self.segments))
         
         for i in range(len(self.segments)):
             print ("slice sampling")
@@ -425,9 +402,7 @@ class GPSegmentation():
             for s in self.segm_in_class:
                 print( len(s), end=" " )
             print( "]" )
-            counters[i]+=self.counter
-
-
+            
             self.segments[i] = segm
 
             for s,c in zip( segm, segm_class ):
