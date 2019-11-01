@@ -2,3 +2,9 @@
 learn/
 
 recog/
+
+*.pyd
+
+*.c
+
+*.pyc
