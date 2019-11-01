@@ -9,7 +9,7 @@ import os
 def learn( savedir, dim, gamma, eta ):
     gpsegm = GPSegmentation( dim, gamma, eta) 
 
-    files =  [ "testdata2dim_%03d.txt" % j for j in range(5) ]
+    files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(5) ]
     gpsegm.load_data( files )
     liks = []
     
@@ -35,7 +35,7 @@ def learn( savedir, dim, gamma, eta ):
 def recog( modeldir, savedir, dim, gamma, eta ):
     gpsegm = GPSegmentation( dim, gamma, eta)
 
-    gpsegm.load_data( [ "testdata2dim_%03d.txt" % j for j in range(4) ] )
+    gpsegm.load_data( [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(4) ] )
     gpsegm.load_model( modeldir )
 
 
@@ -51,7 +51,7 @@ def recog( modeldir, savedir, dim, gamma, eta ):
 
 def main():
     #parameters
-    dim = 2
+    dim = 1
     gamma = 1.0
     eta = 10.0
     

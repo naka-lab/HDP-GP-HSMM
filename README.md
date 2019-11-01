@@ -37,7 +37,7 @@ Input Dataを変更した場合は, `*` の付いているパラメータは要�
 #### hypara1
 ```
 GaussianProcess.pyの
-double covariance_func 関数内の
+covariance_func 関数内の
 
 theta0 ~ theta3
 によってカーネルを決定する．
