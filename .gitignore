@@ -3,6 +3,7 @@ learn/
 
 recog/
 
+
 *.pyd
 
 *.c
