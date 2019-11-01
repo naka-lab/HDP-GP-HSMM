@@ -5,20 +5,21 @@ from HDPGPHSMM_segmentaion import GPSegmentation
 import time
 import matplotlib.pyplot as plt
 import os
+import glob
 
-def learn( savedir, dim, gamma, eta ):
-    gpsegm = GPSegmentation( dim, gamma, eta) 
+def learn( savedir, dim, gamma, eta, initial_class ):
+    gpsegm = GPSegmentation( dim, gamma, eta, initial_class) 
 
-    files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(5) ]
+    files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(6) ]
     gpsegm.load_data( files )
     liks = []
     
     start = time.clock()
     #iteration (default: 10)
-    for it in range(10):
+    for it in range( 10 ):
         print( "-----", it, "-----" )
         gpsegm.learn()
-        gpsegm.save_model( savedir )
+        numclass = gpsegm.save_model( savedir )
         print( "lik =", gpsegm.calc_lik() )
         liks.append(gpsegm.calc_lik())
     print ("liks: ",liks)
@@ -29,13 +30,14 @@ def learn( savedir, dim, gamma, eta ):
     plt.plot( range(len(liks)), liks )
     plt.savefig( os.path.join( savedir,"liks.png") )
         
-    return gpsegm.calc_lik()
+    return numclass
 
 
-def recog( modeldir, savedir, dim, gamma, eta ):
-    gpsegm = GPSegmentation( dim, gamma, eta)
+def recog( modeldir, savedir, dim, gamma, eta, initial_class ):
+    print ("class", initial_class)
+    gpsegm = GPSegmentation( dim, gamma, eta, initial_class)
 
-    gpsegm.load_data( [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(4) ] )
+    gpsegm.load_data( [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(6) ] )
     gpsegm.load_model( modeldir )
 
 
@@ -55,10 +57,13 @@ def main():
     gamma = 1.0
     eta = 10.0
     
+    initial_class = 1
     #learn
-    learn( "learn/", dim, gamma, eta )
+    print ( "=====", "learn", "=====" )
+    recog_initial_class = learn( "learn/", dim, gamma, eta, initial_class )
     #recognition
-    recog( "learn/", "recog/", dim, gamma, eta )
+    print ( "=====", "recognition", "=====" )
+    recog( "learn/", "recog/", dim, gamma, eta, recog_initial_class )
     return
 
 if __name__=="__main__":

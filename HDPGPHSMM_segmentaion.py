@@ -16,6 +16,7 @@ import math
 import os
 import sys
 import time
+import glob
 #from scipy.misc import logsumexp
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]}, inplace=True)
@@ -28,9 +29,9 @@ class GPSegmentation():
     AVE_LEN = 12
     SKIP_LEN = 1
     
-    def __init__(self, dim, gamma, alpha):
+    def __init__(self, dim, gamma, alpha, initial_class):
         self.dim = dim
-        self.numclass = 1
+        self.numclass = initial_class
         self.segmlen = 3
         self.gps = [ GaussianProcessMultiDim.GPMD(dim) for i in range(self.numclass)]
         self.segm_in_class= [ [] for i in range(self.numclass)]
@@ -97,7 +98,7 @@ class GPSegmentation():
         # 遷移確率更新
         self.trans_prob = np.load( basename+"trans.npy", allow_pickle=True )
         self.trans_prob_bos = np.load( basename+"trans_bos.npy", allow_pickle=True )
-        self.trans_prob_eos = np.load( basename+"trans_eos.npy", allow_pickle=True )
+        self.trans_prob_eos = np.load( basename+"trans_eos.npy", allow_pickle=True )        
 
 
     def update_gp(self, c ):
@@ -147,6 +148,7 @@ class GPSegmentation():
                         plt.plot( range(len(data[:,d])), data[:,d], "o-" )
                     plt.ylim( -1, 1 )
                 plt.savefig( basename+"class%03d_dim%03d.png" % (c, d) )
+                plt.close()
                     
         np.save( basename + "trans.npy" , self.trans_prob  )
         np.save( basename + "trans_bos.npy" , self.trans_prob_bos )
@@ -155,6 +157,8 @@ class GPSegmentation():
         
         for c in range(self.numclass):
             np.save( basename+"class%03d.npy" % c, self.segm_in_class[c] )
+            
+        return self.numclass
             
             
     def forward_filtering(self, d ):
@@ -369,8 +373,10 @@ class GPSegmentation():
     def update(self, learning_phase=True ):
         
         for i in range(len(self.segments)):
-            print ("slice sampling")
-            self.sample_num_states()
+            if learning_phase:
+                print ("slice sampling")
+                self.sample_num_states()
+            
             d = self.data[i]
             segm = self.segments[i]
 
