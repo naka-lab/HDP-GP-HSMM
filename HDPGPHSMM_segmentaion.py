@@ -28,7 +28,7 @@ class GPSegmentation():
     MIN_LEN = 3
     AVE_LEN = 12
     SKIP_LEN = 1
-    
+
     def __init__(self, dim, gamma, alpha, initial_class):
         self.dim = dim
         self.numclass = initial_class
@@ -44,7 +44,7 @@ class GPSegmentation():
         self.counter = 0
         self.SKIP_LEN = 1
         self.is_initialized = False
-        
+
         # stick breaking process
         self.alpha = alpha
         self.beta = np.ones(1)
@@ -72,7 +72,7 @@ class GPSegmentation():
 
                 i+=length
             self.segments.append( segm )
-            
+
             # ランダムに割り振る
             for i,s in enumerate(segm):
                 c = random.randint(0,self.numclass-1)
@@ -98,7 +98,7 @@ class GPSegmentation():
         # 遷移確率更新
         self.trans_prob = np.load( basename+"trans.npy", allow_pickle=True )
         self.trans_prob_bos = np.load( basename+"trans_bos.npy", allow_pickle=True )
-        self.trans_prob_eos = np.load( basename+"trans_eos.npy", allow_pickle=True )        
+        self.trans_prob_eos = np.load( basename+"trans_eos.npy", allow_pickle=True )
 
 
     def update_gp(self, c ):
@@ -109,7 +109,7 @@ class GPSegmentation():
             datax += range(len(s))
         self.gps[c].learn( np.array(datax), datay )
 
-    
+
     #ver_log
     def calc_emission_logprob( self, c, segm ):
         gp = self.gps[c]
@@ -120,9 +120,10 @@ class GPSegmentation():
             p = gp.calc_lik( np.arange(len(segm), dtype=np.float) , segm )
             return p + log_plen
         else:
-            return 1.0e-100
-    
-    
+            return -1.0e100
+            #return math.log(1.0e-100)
+
+
     def save_model(self, basename ):
         if not os.path.exists(basename):
             os.mkdir( basename )
@@ -136,7 +137,7 @@ class GPSegmentation():
                 cut_points += [0] * len(s)
                 cut_points[-1] = 1
             np.savetxt( basename+"segm%03d.txt" % n, np.vstack([classes,cut_points]).T, fmt=str("%d") )
-            
+
         for c in range(len(self.gps)):
             for d in range(self.dim):
                 plt.clf()
@@ -149,24 +150,24 @@ class GPSegmentation():
                     plt.ylim( -1, 1 )
                 plt.savefig( basename+"class%03d_dim%03d.png" % (c, d) )
                 plt.close()
-                    
+
         np.save( basename + "trans.npy" , self.trans_prob  )
         np.save( basename + "trans_bos.npy" , self.trans_prob_bos )
         np.save( basename + "trans_eos.npy" , self.trans_prob_eos )
         np.save( basename + "all_class.npy", self.segm_in_class[c])
-        
+
         for c in range(self.numclass):
             np.save( basename+"class%03d.npy" % c, self.segm_in_class[c] )
-            
+
         return self.numclass
-            
-            
+
+
     def forward_filtering(self, d ):
         T = len(d)
-        a = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) - 1.0e-100   # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
+        log_a = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) - 1.0e100   # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
         valid = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) # 計算された有効な値かどうか．計算されていない場所の確率を0にするため．
         z = np.ones( T ) # 正規化定数
-        
+
         for t in range(T):
             for k in range(self.MIN_LEN,self.MAX_LEN,self.SKIP_LEN):
                 if t-k<0:
@@ -176,11 +177,11 @@ class GPSegmentation():
                 for c in range(self.numclass):
                     out_prob = self.calc_emission_logprob( c, segm )
                     foward_prob = 0.0
-                    
+
                     # 遷移確率
                     tt = t-k-1
                     if tt>=0:
-                        foward_prob = logsumexp( a[tt,:,:] + z[tt] + np.log(self.trans_prob[:,c]) ) + out_prob
+                        foward_prob = logsumexp( log_a[tt,:,:] + z[tt] + np.log(self.trans_prob[:,c]) ) + out_prob
                     else:
                         # 最初の単語
                         foward_prob = out_prob + math.log(self.trans_prob_bos[c])
@@ -190,18 +191,18 @@ class GPSegmentation():
                         foward_prob += math.log(self.trans_prob_eos[c])
 
                     # 正規化を元に戻す
-                    a[t,k,c] = foward_prob
+                    log_a[t,k,c] = foward_prob
                     valid[t,k,c] = 1.0
                     if math.isnan(foward_prob):
                         print( "a[t=%d,k=%d,c=%d] became NAN!!" % (t,k,c) )
                         sys.exit(-1)
             # 正規化
             if t-self.MIN_LEN>=0:
-                z[t] = logsumexp( a[t,:,:] )
-                a[t,:,:] -= z[t]
-                
-        return np.exp(a)*valid
-    
+                z[t] = logsumexp( log_a[t,:,:] )
+                log_a[t,:,:] -= z[t]
+
+        return np.exp(log_a)*valid
+
 
     def sample_idx(self, prob ):
         accm_prob = [0,] * len(prob)
@@ -230,24 +231,24 @@ class GPSegmentation():
             idx = self.sample_idx( (a[t]*transp).reshape( self.MAX_LEN*self.numclass ))
             k = int(idx/self.numclass)
             c = idx % self.numclass
-                     
+
             #バグ修正
             if t-k-1<=0:
                 s = d[0:t+1]
             else:
                 s = d[t-k:t+1]
-            
+
             # パラメータ更新
             segm.insert( 0, s )
             segm_class.insert( 0, c )
-            
+
 
             t = t-k-1
             self.counter += 1
-            
+
             if t<=0:
                 break
-        
+
         return segm, segm_class
 
 
@@ -339,8 +340,8 @@ class GPSegmentation():
         self.beta = np.array( beta )
 
         self.all_numclass.append(self.numclass)
-        
-        
+
+
     # list.remove( elem )だとValueErrorになる
     def remove_ndarray(self, lst, elem ):
         l = len(elem)
@@ -351,8 +352,8 @@ class GPSegmentation():
                 lst.pop(i)
                 return
         raise ValueError( "ndarray is not found!!" )
-        
-        
+
+
     def learn(self):
         if self.is_initialized==False:
             # GPの学習
@@ -371,12 +372,12 @@ class GPSegmentation():
 
 
     def update(self, learning_phase=True ):
-        
+
         for i in range(len(self.segments)):
             if learning_phase:
                 print ("slice sampling")
                 self.sample_num_states()
-            
+
             d = self.data[i]
             segm = self.segments[i]
 
@@ -408,7 +409,7 @@ class GPSegmentation():
             for s in self.segm_in_class:
                 print( len(s), end=" " )
             print( "]" )
-            
+
             self.segments[i] = segm
 
             for s,c in zip( segm, segm_class ):
@@ -445,7 +446,6 @@ class GPSegmentation():
             if len(self.segm_in_class[c])!=0:
                 n += 1
         return n
-    
+
     def recog(self):
         self.update(False)
-
