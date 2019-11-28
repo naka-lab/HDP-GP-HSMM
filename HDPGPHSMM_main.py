@@ -8,12 +8,12 @@ import os
 import glob
 
 def learn( savedir, dim, gamma, eta, initial_class ):
-    gpsegm = GPSegmentation( dim, gamma, eta, initial_class) 
+    gpsegm = GPSegmentation( dim, gamma, eta, initial_class)
 
     files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(6) ]
     gpsegm.load_data( files )
     liks = []
-    
+
     start = time.clock()
     #iteration (default: 10)
     for it in range( 10 ):
@@ -24,12 +24,12 @@ def learn( savedir, dim, gamma, eta, initial_class ):
         liks.append(gpsegm.calc_lik())
     print ("liks: ",liks)
     print( time.clock()-start )
-    
+
     #plot liks
     plt.clf()
     plt.plot( range(len(liks)), liks )
     plt.savefig( os.path.join( savedir,"liks.png") )
-        
+
     return numclass
 
 
@@ -56,7 +56,7 @@ def main():
     dim = 1
     gamma = 1.0
     eta = 10.0
-    
+
     initial_class = 1
     #learn
     print ( "=====", "learn", "=====" )
