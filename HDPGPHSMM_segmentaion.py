@@ -120,8 +120,7 @@ class GPSegmentation():
             p = gp.calc_lik( np.arange(len(segm), dtype=np.float) , segm )
             return p + log_plen
         else:
-            return -1.0e100
-            #return math.log(1.0e-100)
+            return math.log(1.0e-100)
 
 
     def save_model(self, basename ):
@@ -164,7 +163,7 @@ class GPSegmentation():
 
     def forward_filtering(self, d ):
         T = len(d)
-        log_a = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) - 1.0e100   # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
+        log_a = np.log(np.zeros( (len(d), self.MAX_LEN, self.numclass) ) + 1.0e-100 )  # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
         valid = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) # 計算された有効な値かどうか．計算されていない場所の確率を0にするため．
         z = np.ones( T ) # 正規化定数
 
