@@ -9,3 +9,7 @@ recog/
 *.c
 
 *.pyc
+
+Input_Data/.DS_Store
+
+.DS_Store
