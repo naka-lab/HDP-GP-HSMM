@@ -32,7 +32,7 @@ class GPSegmentation():
     def __init__(self, dim, gamma, alpha, initial_class):
         self.dim = dim
         self.numclass = initial_class
-        self.segmlen = 3
+        #self.segmlen = 3
         self.gps = [ GaussianProcessMultiDim.GPMD(dim) for i in range(self.numclass)]
         self.segm_in_class= [ [] for i in range(self.numclass)]
         self.segmclass = {}
@@ -220,14 +220,9 @@ class GPSegmentation():
         segm = []
         segm_class = []
 
-        c = -1
         while True:
-            if t==T-1:
-                transp = self.trans_prob_eos
-            else:
-                transp = self.trans_prob[:,c]
 
-            idx = self.sample_idx( (a[t]*transp).reshape( self.MAX_LEN*self.numclass ))
+            idx = self.sample_idx( (a[t]).reshape( self.MAX_LEN*self.numclass ))
             k = int(idx/self.numclass)
             c = idx % self.numclass
 
