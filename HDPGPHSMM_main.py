@@ -14,7 +14,7 @@ def learn( savedir, dim, gamma, eta, initial_class ):
     gpsegm.load_data( files )
     liks = []
 
-    start = time.clock()
+    start = time.time()
     #iteration (default: 10)
     for it in range( 10 ):
         print( "-----", it, "-----" )
@@ -23,7 +23,7 @@ def learn( savedir, dim, gamma, eta, initial_class ):
         print( "lik =", gpsegm.calc_lik() )
         liks.append(gpsegm.calc_lik())
     print ("liks: ",liks)
-    print( time.clock()-start )
+    print( time.time()-start )
 
     #plot liks
     plt.clf()
@@ -41,12 +41,12 @@ def recog( modeldir, savedir, dim, gamma, eta, initial_class ):
     gpsegm.load_model( modeldir )
 
 
-    start = time.clock()
+    start = time.time()
     for it in range(5):
         print( "-----", it, "-----" )
         gpsegm.recog()
         print( "lik =", gpsegm.calc_lik() )
-    print( time.clock()-start )
+    print( time.time()-start )
     gpsegm.save_model( savedir )
 
 
