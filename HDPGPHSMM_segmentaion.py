@@ -47,7 +47,7 @@ class GPSegmentation():
 
         # stick breaking process
         self.alpha = alpha
-        self.beta = np.ones(1)
+        self.beta = np.ones(self.numclass)
         self.gamma = gamma
 
 
@@ -374,7 +374,6 @@ class GPSegmentation():
 
         for i in range(len(self.segments)):
             if learning_phase:
-                print ("slice sampling")
                 self.sample_num_states()
 
             d = self.data[i]

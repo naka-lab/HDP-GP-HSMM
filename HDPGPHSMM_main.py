@@ -10,7 +10,7 @@ import glob
 def learn( savedir, dim, gamma, eta, initial_class ):
     gpsegm = GPSegmentation( dim, gamma, eta, initial_class)
 
-    files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(6) ]
+    files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(4) ]
     gpsegm.load_data( files )
     liks = []
 
@@ -37,7 +37,7 @@ def recog( modeldir, savedir, dim, gamma, eta, initial_class ):
     print ("class", initial_class)
     gpsegm = GPSegmentation( dim, gamma, eta, initial_class)
 
-    gpsegm.load_data( [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(6) ] )
+    gpsegm.load_data( [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(4) ] )
     gpsegm.load_model( modeldir )
 
 
