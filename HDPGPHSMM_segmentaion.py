@@ -137,7 +137,8 @@ class GPSegmentation():
                 cut_points += [0] * len(s)
                 cut_points[-1] = 1
             np.savetxt( basename+"segm%03d.txt" % n, np.vstack([classes,cut_points]).T, fmt=str("%d") )
-            np.savetxt( basename+"beta%03d.txt" % n, np.array(self.beta), fmt=str("%d") )
+            #np.savetxt( basename+"beta%03d.txt" % n, np.array(self.beta), fmt=str("%d") )
+            np.savetxt( basename+"beta%03d.txt" % n, np.array(self.beta) )
 
         for c in range(len(self.gps)):
             for d in range(self.dim):
@@ -448,7 +449,7 @@ class GPSegmentation():
         if self.is_initialized==False:
             # GPの学習
             for n in range(len(self.segments)):
-                for i, s in self.segments[n]:
+                for i, s in enumerate(self.segments[n]):
                     c = self.segmclass[(n, i)]
                     self.segm_in_class[c].append( s )
 
@@ -519,6 +520,7 @@ class GPSegmentation():
         """
         If you update the hyperparameter, uncomment the next two lines.
         """
+        #print("<<< update the hyperparameter >>>")
         #for c in range(self.numclass):
         #    self.gps[c].estimate_hyperparams(100)
 

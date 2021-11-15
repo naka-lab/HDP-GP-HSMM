@@ -52,7 +52,8 @@ class GPMD:
 
     def estimate_hyperparams(self, niter):
         for d in range(self.__dim):
-            self.__gp[d].estimate_hyperparams(niter)
+            max_params = self.__gp[d].estimate_hyperparams(niter)
+            #print(max_params)
 
 def main():
     pass

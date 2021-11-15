@@ -149,7 +149,8 @@ cdef class GP:
                     max_params = [self.beta, self.theta0, self.theta1, self.theta2, self.theta3]
 
         self.beta, self.theta0, self.theta1, self.theta2, self.theta3 = max_params
-        return
+        #print(init_lik, "->", max_lik)
+        return max_params
 
 if __name__=='__main__':
     pass
