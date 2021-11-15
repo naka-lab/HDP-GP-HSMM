@@ -22,6 +22,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]}, inplace=True)
 from cymath import logsumexp
 
+
 class GPSegmentation():
     # parameters
     MAX_LEN = 20
@@ -56,7 +57,7 @@ class GPSegmentation():
         self.segments = []
         self.is_initialized = False
 
-        for z in z_s:
+        for n, z in enumerate(z_s):
             y = np.loadtxt(z, dtype=np.float)
             segm = []
             self.data.append( y )
@@ -77,7 +78,7 @@ class GPSegmentation():
             for i,s in enumerate(segm):
                 c = random.randint(0,self.numclass-1)
                 #c = 0
-                self.segmclass[id(s) ] = c
+                self.segmclass[ (n,i) ] = c
                 #self.segm_in_class[c].append( s )
         """
         # 各クラス毎に学習
@@ -130,9 +131,9 @@ class GPSegmentation():
         for n,segm in enumerate(self.segments):
             classes = []
             cut_points = []
-            for s in segm:
-                c = self.segmclass[id(s)]
-                classes += [ c for i in range(len(s)) ]
+            for i, s in enumerate(segm):
+                c = self.segmclass[(n,i)]
+                classes += [ c for j in range(len(s)) ]
                 cut_points += [0] * len(s)
                 cut_points[-1] = 1
             np.savetxt( basename+"segm%03d.txt" % n, np.vstack([classes,cut_points]).T, fmt=str("%d") )
@@ -160,6 +161,95 @@ class GPSegmentation():
             np.save( basename+"class%03d.npy" % c, self.segm_in_class[c] )
 
         return self.numclass
+
+
+    def calc_vitervi_path(self, d ):
+        T = len(d)
+        log_a = np.log( np.zeros( (len(d), self.MAX_LEN, self.numclass) )  + 1.0e-100 )  # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
+        valid = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) # 計算された有効な値可どうか．計算されていない場所の確率を0にするため．
+        z = np.ones( T ) # 正規化定数
+        path_kc = -np.ones(  (len(d), self.MAX_LEN, self.numclass, 2), dtype=np.int32 )
+
+        # 前向き確率計算
+        for t in range(T):
+            for k in range(self.MIN_LEN,self.MAX_LEN,self.SKIP_LEN):
+                if t-k<0:
+                    break
+
+                segm = d[t-k:t+1]
+                for c in range(self.numclass):
+                    out_prob = self.calc_emission_logprob( c, segm )
+                    foward_prob = 0.0
+
+                    # 遷移確率
+                    tt = t-k-1
+                    if tt>=0:
+                        prev_prob = log_a[tt,:,:] + z[tt] + np.log(self.trans_prob[:,c])
+
+                        # 最大値を取る
+                        idx = np.argmax( prev_prob.reshape( self.MAX_LEN*self.numclass ))
+                        kk = int(idx/self.numclass)
+                        cc = idx % self.numclass
+
+                        path_kc[t, k, c, 0] = kk
+                        path_kc[t, k, c, 1] = cc
+
+                        foward_prob = prev_prob[kk, cc] + out_prob
+                    else:
+                        # 最初の単語
+                        foward_prob = out_prob + math.log(self.trans_prob_bos[c])
+
+                        path_kc[t, k, c, 0] = t+1
+                        path_kc[t, k, c, 1] = -1
+
+
+                    if t==T-1:
+                        # 最後の単語
+                        foward_prob += math.log(self.trans_prob_eos[c])
+
+
+                    log_a[t,k,c] = foward_prob
+                    valid[t,k,c] = 1.0
+                    if math.isnan(foward_prob):
+                        print( "a[t=%d,k=%d,c=%d] became NAN!!" % (t,k,c) )
+                        sys.exit(-1)
+            # 正規化
+            if t-self.MIN_LEN>=0:
+                z[t] = logsumexp( log_a[t,:,:] )
+                log_a[t,:,:] -= z[t]
+                #z[t] = logsumexp( a[t,:,:] )
+                #a[t,:,:] -= z[t]
+
+        # バックトラック
+        t = T-1
+        idx = np.argmax( log_a[t].reshape( self.MAX_LEN*self.numclass ))
+        k = int(idx/self.numclass)
+        c = idx % self.numclass
+
+        segm = [ d[t-k:t+1] ]
+        segm_class = [ c ]
+
+        while True:
+            kk, cc = path_kc[t, k, c]
+
+            t = t-k-1
+            k = kk
+            c = cc
+
+            if t<=0:
+                break
+
+            if t-k-1<=0:
+                #先頭
+                s = d[0:t+1]
+            else:
+                #先頭以外
+                s = d[t-k:t+1]
+
+            segm.insert( 0, s )
+            segm_class.insert( 0, c )
+
+        return segm, segm_class
 
 
     def forward_filtering(self, d ):
@@ -259,18 +349,18 @@ class GPSegmentation():
 
         # 数え上げる
         for n,segm in enumerate(self.segments):
-            if id(segm[0]) in self.segmclass:
-                c_begin = self.segmclass[ id(segm[0]) ]
+            if (n,0) in self.segmclass:
+                c_begin = self.segmclass[ (n,0) ]
                 self.trans_prob_bos[c_begin]+=1
 
-            if id(segm[-1]) in self.segmclass:
-                c_end = self.segmclass[ id(segm[-1]) ]
+            if (n,len(segm)-1) in self.segmclass:
+                c_end = self.segmclass[ (n,len(segm)-1) ]
                 self.trans_prob_eos[c_end]+=1
 
             for i in range(1,len(segm)):
                 try:
-                    cc = self.segmclass[ id(segm[i-1]) ]
-                    c = self.segmclass[ id(segm[i]) ]
+                    cc = self.segmclass[ (n,i-1) ]
+                    c = self.segmclass[ (n,i) ]
                 except KeyError:
                     # gibss samplingで除かれているものは無視
                     continue
@@ -294,17 +384,17 @@ class GPSegmentation():
         # 補助変数uを計算
         u = []
         for n,segm in enumerate(self.segments):
-            c = self.segmclass[ id(segm[0]) ]
+            c = self.segmclass[ (n, 0) ]
             p = self.trans_prob_bos[c]
             u.append( random.random() * p )
 
-            c = self.segmclass[ id(segm[-1]) ]
+            c = self.segmclass[ (n, len(segm)-1) ]
             p = self.trans_prob_eos[c]
             u.append( random.random() * p )
 
             for i in range(1,len(segm)):
-                cc = self.segmclass[ id(segm[i-1]) ]
-                c = self.segmclass[ id(segm[i]) ]
+                cc = self.segmclass[ (n, i-1) ]
+                c = self.segmclass[ (n, i) ]
                 p = self.trans_prob[cc,c]
                 u.append( random.random() * p )
 
@@ -357,9 +447,9 @@ class GPSegmentation():
     def learn(self):
         if self.is_initialized==False:
             # GPの学習
-            for i in range(len(self.segments)):
-                for s in self.segments[i]:
-                    c = self.segmclass[id(s)]
+            for n in range(len(self.segments)):
+                for i, s in self.segments[n]:
+                    c = self.segmclass[(n, i)]
                     self.segm_in_class[c].append( s )
 
             # 各クラス毎に学習
@@ -373,16 +463,16 @@ class GPSegmentation():
 
     def update(self, learning_phase=True ):
 
-        for i in range(len(self.segments)):
+        for n in range(len(self.segments)):
             if learning_phase:
                 self.sample_num_states()
 
-            d = self.data[i]
-            segm = self.segments[i]
+            d = self.data[n]
+            segm = self.segments[n]
 
-            for s in segm:
-                c = self.segmclass[id(s)]
-                self.segmclass.pop( id(s) )
+            for i, s in enumerate(segm):
+                c = self.segmclass[(n, i)]
+                self.segmclass.pop( (n, i) )
 
                 if learning_phase:
                     # パラメータ更新
@@ -409,10 +499,10 @@ class GPSegmentation():
                 print( len(s), end=" " )
             print( "]" )
 
-            self.segments[i] = segm
+            self.segments[n] = segm
 
-            for s,c in zip( segm, segm_class ):
-                self.segmclass[id(s)] = c
+            for i, (s,c) in enumerate(zip( segm, segm_class )):
+                self.segmclass[(n, i)] = c
 
                 # パラメータ更新
                 if learning_phase:
@@ -438,10 +528,10 @@ class GPSegmentation():
     #log
     def calc_lik(self):
         lik = 0
-        for segm in self.segments:
-            for s in segm:
-                c = self.segmclass[id(s)]
-                lik += self.gps[c].calc_lik( np.arange(len(s),dtype=np.float64) , s )
+        for n, segm in enumerate(self.segments):
+            for i, s in enumerate(segm):
+                c = self.segmclass[(n, i)]
+                lik += self.gps[c].calc_lik( np.arange(len(s),dtype=np.float) , s )
         return lik
 
 
@@ -453,4 +543,12 @@ class GPSegmentation():
         return n
 
     def recog(self):
-        self.update(False)
+        #self.update(False)
+        self.segmclass.clear()
+
+        for n, d in enumerate(self.data):
+            # viterviで解く
+            segms, classes = self.calc_vitervi_path( d )
+            self.segments[n] = segms
+            for i, (s, c) in enumerate(zip( segms, classes )):
+                self.segmclass[(n, i)] = c
