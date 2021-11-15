@@ -28,27 +28,32 @@ class GPMD:
         lik = 0.0
         if self.__dim==1:
             y = np.asarray(y,dtype=np.float).reshape((-1,self.__dim))
-        
+
         for d in range(self.__dim):
             lik += self.__gp[d].calc_lik( x , y[:,d] )
 
         return lik
-       
+
 
     def plot(self,x):
         for d in range(self.__dim):
             plt.subplot(self.__dim,1,d+1)
-            
+
             mus, sigmas = self.__gp[d].predict(x)
-            
+
             y_min = mus - sigmas*2
             y_max = mus + sigmas*2
-            
+
             plt.fill_between(x,y_min,y_max,facecolor="lavender",alpha=0.9, edgecolor="lavender")
             plt.plot(x,y_min,'b--')
             plt.plot(x,mus,'b-')
             plt.plot(x,y_max,'b--')
-            
+
+
+    def estimate_hyperparams(self, niter):
+        for d in range(self.__dim):
+            self.__gp[d].estimate_hyperparams(niter)
+
 def main():
     pass
 

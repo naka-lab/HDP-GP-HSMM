@@ -136,6 +136,7 @@ class GPSegmentation():
                 cut_points += [0] * len(s)
                 cut_points[-1] = 1
             np.savetxt( basename+"segm%03d.txt" % n, np.vstack([classes,cut_points]).T, fmt=str("%d") )
+            np.savetxt( basename+"beta%03d.txt" % n, np.array(self.beta), fmt=str("%d") )
 
         for c in range(len(self.gps)):
             for d in range(self.dim):
@@ -424,6 +425,12 @@ class GPSegmentation():
 
                 # 遷移確率更新
                 self.calc_trans_prob()
+
+        """
+        If you update the hyperparameter, uncomment the next two lines.
+        """
+        #for c in range(self.numclass):
+        #    self.gps[c].estimate_hyperparams(100)
 
         return
 
