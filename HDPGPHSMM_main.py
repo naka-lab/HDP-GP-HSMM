@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import os
 import glob
 
-def learn( savedir, dim, gamma, eta, initial_class ):
-    gpsegm = GPSegmentation( dim, gamma, eta, initial_class)
+def learn( savedir, dim, gamma, eta, initial_class, avelen, maxlen, minlen, skiplen ):
+    gpsegm = GPSegmentation( dim, gamma, eta, initial_class, avelen, maxlen, minlen, skiplen)
 
-    files =  [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(4) ]
+    files =  [ "Input_Data/testdata2dim_%03d.txt" % j for j in range(4) ]
     gpsegm.load_data( files )
     liks = []
 
@@ -33,11 +33,11 @@ def learn( savedir, dim, gamma, eta, initial_class ):
     return numclass
 
 
-def recog( modeldir, savedir, dim, gamma, eta, initial_class ):
+def recog( modeldir, savedir, dim, gamma, eta, initial_class, avelen, maxlen, minlen, skiplen ):
     print ("class", initial_class)
-    gpsegm = GPSegmentation( dim, gamma, eta, initial_class)
+    gpsegm = GPSegmentation( dim, gamma, eta, initial_class, avelen, maxlen, minlen, skiplen)
 
-    gpsegm.load_data( [ "Input_Data/testdata1dim_%03d.txt" % j for j in range(4) ] )
+    gpsegm.load_data( [ "Input_Data/testdata2dim_%03d.txt" % j for j in range(4) ] )
     gpsegm.load_model( modeldir )
 
 
@@ -50,17 +50,24 @@ def recog( modeldir, savedir, dim, gamma, eta, initial_class ):
 
 def main():
     #parameters
-    dim = 1
-    gamma = 1.0
-    eta = 10.0
+    dim = 2
+    gamma = 2.0
+    eta = 5.0
 
     initial_class = 1
+
+    avelen = 15
+    maxlen = int(avelen + avelen*0.25)
+    minlen = int(avelen*0.25)
+    print(maxlen, minlen)
+    skiplen = 1
+
     #learn
     print ( "=====", "learn", "=====" )
-    recog_initial_class = learn( "learn/", dim, gamma, eta, initial_class )
+    recog_initial_class = learn( "learn/", dim, gamma, eta, initial_class, avelen, maxlen, minlen, skiplen )
     #recognition
     print ( "=====", "recognition", "=====" )
-    recog( "learn/", "recog/", dim, gamma, eta, recog_initial_class )
+    recog( "learn/", "recog/", dim, gamma, eta, recog_initial_class, avelen, maxlen, minlen, skiplen )
     return
 
 if __name__=="__main__":

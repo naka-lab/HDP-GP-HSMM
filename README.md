@@ -4,9 +4,14 @@
 ガウス過程の計算は，Cythonと計算のキャッシュを利用して高速化しています．
 詳細は以下の論文を参照してください．
 
-Masatoshi Nagano, Tomoaki Nakamura, Takayuki Nagai, Daichi Mochihashi, Ichiro Kobayashi and Masahide Kaneko, “Sequence Pattern Extraction by Segmenting Time Series Data Using GP-HSMM with Hierarchical Dirichlet Process”, 
-2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), 
+Masatoshi Nagano, Tomoaki Nakamura, Takayuki Nagai, Daichi Mochihashi, Ichiro Kobayashi and Masahide Kaneko, “Sequence Pattern Extraction by Segmenting Time Series Data Using GP-HSMM with Hierarchical Dirichlet Process”,
+2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS),
 pp. 4067-4074, Oct. 2018 [[PDF]](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8594029)
+
+さらに以下の文献で提案された高速化法を導入，計算のCython化，逆行列演算の工夫により，従来のGP-HSMMに比べ高速な計算が可能です．
+
+川村 美帆，佐々木 雄一，中村 裕一，"GP-HSMM の尤度計算並列化による高速な身体動作の分節化方式"，計測自動制御学会 システムインテグレーション部門講演会，1A4-08，2021
+
 
 ## 実行方法
 
@@ -71,20 +76,20 @@ eta: Hierarchical Dirichlet processのparameter (default: 10.0)
 
 
 # LICENSE
-This program is freely available for free non-commercial use. 
+This program is freely available for free non-commercial use.
 If you publish results obtained using this program, please cite:
 
 ```
-@INPROCEEDINGS{8594029, 
-author={M. {Nagano} and T. {Nakamura} and T. {Nagai} and D. {Mochihashi} and I. {Kobayashi} and M. {Kaneko}}, 
-booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 
-title={Sequence Pattern Extraction by Segmenting Time Series Data Using GP-HSMM with Hierarchical Dirichlet Process}, 
-year={2018}, 
-volume={}, 
-number={}, 
-pages={4067-4074}, 
-keywords={Bayes methods;feature extraction;Gaussian processes;hidden Markov models;image motion analysis;image sampling;image segmentation;learning (artificial intelligence);nonparametric statistics;time series;continuous time-series data;semiMarkov model;Gaussian processes;nonparametric models;unit motion patterns;complicated continuous motion;nonparametric Bayesian model;hierarchical Dirichlet process;hierarchical Dirichlet processes-Gaussian process;HDP-GP-HSMM;motion-capture data;sequence pattern extraction;time series data;continuous information;unit motions;unsupervised segmentation;Hidden Markov models;Motion segmentation;Gaussian processes;Bayes methods;Data models;Trajectory;Kernel}, 
-doi={10.1109/IROS.2018.8594029}, 
-ISSN={2153-0866}, 
+@INPROCEEDINGS{8594029,
+author={M. {Nagano} and T. {Nakamura} and T. {Nagai} and D. {Mochihashi} and I. {Kobayashi} and M. {Kaneko}},
+booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+title={Sequence Pattern Extraction by Segmenting Time Series Data Using GP-HSMM with Hierarchical Dirichlet Process},
+year={2018},
+volume={},
+number={},
+pages={4067-4074},
+keywords={Bayes methods;feature extraction;Gaussian processes;hidden Markov models;image motion analysis;image sampling;image segmentation;learning (artificial intelligence);nonparametric statistics;time series;continuous time-series data;semiMarkov model;Gaussian processes;nonparametric models;unit motion patterns;complicated continuous motion;nonparametric Bayesian model;hierarchical Dirichlet process;hierarchical Dirichlet processes-Gaussian process;HDP-GP-HSMM;motion-capture data;sequence pattern extraction;time series data;continuous information;unit motions;unsupervised segmentation;Hidden Markov models;Motion segmentation;Gaussian processes;Bayes methods;Data models;Trajectory;Kernel},
+doi={10.1109/IROS.2018.8594029},
+ISSN={2153-0866},
 month={Oct},}
 ```

@@ -13,21 +13,24 @@ class GPMD:
         self.__dim = dim
         self.__gp = [ GaussianProcess.GP() for d in range(self.__dim) ]
 
-    def learn(self,x, y ):
-        y = np.array(y, dtype=np.float).reshape( (-1,self.__dim) )
-        x = np.array(x,dtype=np.float)
+    def learn(self,x, y, same_cov=True ):
+        y = np.array(y, dtype=float).reshape( (-1,self.__dim) )
+        x = np.array(x,dtype=float)
+        i_cov = None
 
         for d in range(self.__dim):
-            if len(x)==0:
-                self.__gp[d].learn( x, [] )
-            else:
-                self.__gp[d].learn( x, y[:,d] )
+            if not same_cov:
+                i_cov = None
 
+            if len(y)!=0:
+                i_cov = self.__gp[d].learn( x, y[:,d], i_cov )
+            else:
+                i_cov = self.__gp[d].learn( x, np.array([]), i_cov )
 
     def calc_lik(self, x, y ):
         lik = 0.0
         if self.__dim==1:
-            y = np.asarray(y,dtype=np.float).reshape((-1,self.__dim))
+            y = np.asarray(y,dtype=float).reshape((-1,self.__dim))
 
         for d in range(self.__dim):
             lik += self.__gp[d].calc_lik( x , y[:,d] )
@@ -49,6 +52,12 @@ class GPMD:
             plt.plot(x,mus,'b-')
             plt.plot(x,y_max,'b--')
 
+    def predict(self, x ):
+        params = []
+        for d in range(self.__dim):
+            mus, sigmas = self.__gp[d].predict(np.array(x, dtype=float))
+            params.append( (mus, sigmas) )
+        return params
 
     def estimate_hyperparams(self, niter):
         for d in range(self.__dim):

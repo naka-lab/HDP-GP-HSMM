@@ -20,17 +20,14 @@ import glob
 #from scipy.misc import logsumexp
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]}, inplace=True)
-from cymath import logsumexp
+from cymath import logsumexp, calc_forward_probability
 
 
 class GPSegmentation():
     # parameters
-    MAX_LEN = 20
-    MIN_LEN = 3
-    AVE_LEN = 12
-    SKIP_LEN = 1
 
-    def __init__(self, dim, gamma, alpha, initial_class):
+
+    def __init__(self, dim, gamma, alpha, initial_class, avelen, maxlen, minlen, skiplen):
         self.dim = dim
         self.numclass = initial_class
         #self.segmlen = 3
@@ -38,18 +35,24 @@ class GPSegmentation():
         self.segm_in_class= [ [] for i in range(self.numclass)]
         self.segmclass = {}
         self.segments = []
-        self.trans_prob = np.ones( (1,1) )
-        self.trans_prob_bos = np.ones( 1 )
-        self.trans_prob_eos = np.ones( 1 )
+        self.trans_prob = np.ones( (initial_class, initial_class) )
+        self.trans_prob_bos = np.ones( initial_class )
+        self.trans_prob_eos = np.ones( initial_class )
         self.all_numclass = []
         self.counter = 0
-        self.SKIP_LEN = 1
         self.is_initialized = False
 
         # stick breaking process
         self.alpha = alpha
         self.beta = np.ones(self.numclass)
         self.gamma = gamma
+
+        self.MAX_LEN = maxlen
+        self.MIN_LEN = minlen
+        self.AVE_LEN = avelen
+        self.SKIP_LEN = skiplen
+
+        self.prior_table = [ i*math.log(self.AVE_LEN) -self.AVE_LEN - sum(np.log(np.arange(1,i+1))) for i in range(1,self.MAX_LEN+1) ]
 
 
     def load_data(self, z_s, classfile=None ):
@@ -123,6 +126,26 @@ class GPSegmentation():
         else:
             return math.log(1.0e-100)
 
+    def calc_emission_logprob_all(self, d):
+        T = len(d)
+        # 出力確率を計算
+        emission_prob_all = np.zeros( ( self.numclass, self.MAX_LEN, len(d)) )
+        for c in range(self.numclass):
+            params = self.gps[c].predict( range(self.MAX_LEN) )
+            for k in range(self.MAX_LEN):
+                for dim in range( self.dim ):
+                    mu = params[dim][0][k]
+                    sig = params[dim][1][k]
+                    emission_prob_all[c, k, 0:T-k] += -math.log(math.sqrt( 2*math.pi*sig**2)) - (d[k:,dim]-mu)**2 / (2*sig**2)
+
+        # 累積確率にする
+        for k in range(1, self.MAX_LEN):
+            emission_prob_all[:, k, :] += emission_prob_all[:, k-1, :]
+
+        for k in range(self.MAX_LEN):
+            emission_prob_all[:,k,:] += self.prior_table[k]
+
+        return emission_prob_all
 
     def save_model(self, basename ):
         if not os.path.exists(basename):
@@ -159,17 +182,19 @@ class GPSegmentation():
         np.save( basename + "all_class.npy", self.segm_in_class[c])
 
         for c in range(self.numclass):
-            np.save( basename+"class%03d.npy" % c, self.segm_in_class[c] )
+            #np.save( basename+"class%03d.npy" % c, self.segm_in_class[c] )
+            np.save( basename+"class%03d.npy" % c, np.array(self.segm_in_class[c], dtype=object) )
 
         return self.numclass
 
 
     def calc_vitervi_path(self, d ):
         T = len(d)
-        log_a = np.log( np.zeros( (len(d), self.MAX_LEN, self.numclass) )  + 1.0e-100 )  # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
+        log_a = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) - 1000000   # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
         valid = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) # 計算された有効な値可どうか．計算されていない場所の確率を0にするため．
         z = np.ones( T ) # 正規化定数
         path_kc = -np.ones(  (len(d), self.MAX_LEN, self.numclass, 2), dtype=np.int32 )
+        emission_prob_all = self.calc_emission_logprob_all( d )
 
         # 前向き確率計算
         for t in range(T):
@@ -177,9 +202,10 @@ class GPSegmentation():
                 if t-k<0:
                     break
 
-                segm = d[t-k:t+1]
+                #segm = d[t-k:t+1]
                 for c in range(self.numclass):
-                    out_prob = self.calc_emission_logprob( c, segm )
+                    out_prob = emission_prob_all[c,k,t-k]
+                    #out_prob = self.calc_emission_logprob( c, segm )
                     foward_prob = 0.0
 
                     # 遷移確率
@@ -254,6 +280,11 @@ class GPSegmentation():
 
 
     def forward_filtering(self, d ):
+        emission_prob_all = self.calc_emission_logprob_all( d )
+        forward_prob = calc_forward_probability( emission_prob_all, self.trans_prob, self.trans_prob_bos, self.trans_prob_eos, len(d), self.MIN_LEN, self.SKIP_LEN, self.MAX_LEN, self.numclass )
+        return forward_prob
+
+        """
         T = len(d)
         log_a = np.log(np.zeros( (len(d), self.MAX_LEN, self.numclass) ) + 1.0e-100 )  # 前向き確率．対数で確率を保持．1.0e-100で確率0を近似的に表現．
         valid = np.zeros( (len(d), self.MAX_LEN, self.numclass) ) # 計算された有効な値かどうか．計算されていない場所の確率を0にするため．
@@ -293,6 +324,7 @@ class GPSegmentation():
                 log_a[t,:,:] -= z[t]
 
         return np.exp(log_a)*valid
+        """
 
 
     def sample_idx(self, prob ):
@@ -502,6 +534,7 @@ class GPSegmentation():
 
             self.segments[n] = segm
 
+            start = time.time()
             for i, (s,c) in enumerate(zip( segm, segm_class )):
                 self.segmclass[(n, i)] = c
 
@@ -516,6 +549,8 @@ class GPSegmentation():
 
                 # 遷移確率更新
                 self.calc_trans_prob()
+
+            print( "parameter update...", time.time()-start, "sec" )
 
         """
         If you update the hyperparameter, uncomment the next two lines.
@@ -533,7 +568,7 @@ class GPSegmentation():
         for n, segm in enumerate(self.segments):
             for i, s in enumerate(segm):
                 c = self.segmclass[(n, i)]
-                lik += self.gps[c].calc_lik( np.arange(len(s),dtype=np.float) , s )
+                lik += self.gps[c].calc_lik( np.arange(len(s),dtype=float) , s )
         return lik
 
 

@@ -42,27 +42,36 @@ cdef class GP:
         self.theta3 = 16.0
 
 
-    cpdef learn(self, xt, yt ):
+    cpdef learn(self, double[:] xt, double[:] yt, double[:,:] i_cov=None ):
         cdef int i,j
-        self.xt = np.array(xt)
-        self.yt = np.array(yt)
+        cdef double c
+        self.xt = np.array( xt )
+        self.yt = np.array( yt )
         self.ns = len(xt)
-        # construct covariance
         cdef double[:,:] cov = np.zeros((self.ns, self.ns))
 
-        for i in range(self.ns):
-            for j in range(self.ns):
-                cov[i,j] = self.covariance_func(xt[i], xt[j])
-                if i==j:
-                    cov[i,j] += 1/self.beta
+        if i_cov==None:
+            for i in range(self.ns):
+                for j in range(i+1):
+                    c = self.covariance_func(xt[i], xt[j])
+                    cov[i,j] = c
+                    cov[j,i] = c
+                    if i==j:
+                        cov[i,j] += 1/self.beta
 
 
-        self.i_cov = np.linalg.inv(cov)
+            #self.i_cov = np.linalg.inv(cov)
+            # 高速化：方程式 cov * x = e の解は x = i_cov * e = i_cov になることを利用
+            self.i_cov = np.linalg.solve(cov, np.identity(self.ns))
+        else:
+            self.i_cov = i_cov
         self.param = np.dot(self.i_cov, self.yt)
 
         self.param_cache.clear()
 
+        return self.i_cov
 
+    """
     def predict( self, x ):
         mus = []
         sigmas = []
@@ -81,6 +90,27 @@ cdef class GP:
             sigmas.append(sigma)
 
         return np.array(mus), np.array(sigmas)
+    """
+    
+    cpdef predict( self, double[:] x ):
+        cdef int k, i
+        cdef double mu, sigma, c
+        cdef int N = x.shape[0]
+        cdef double[:] v
+        cdef double[:] tt = self.yt #[y - np.random.normal() / self.beta for y in self.yt]
+        cdef double[:] mus = np.zeros( N )
+        cdef double[:] sigmas = np.zeros(N)
+
+        for k in range(N):
+            v = np.zeros((self.ns))
+            for i in range(self.ns):
+                v[i] = self.covariance_func(x[k], self.xt[i])
+            c = self.covariance_func(x[k], x[k]) + 1.0 / self.beta
+
+            mus[k] = np.dot(v, np.dot(self.i_cov, tt))
+            sigmas[k] = c - np.dot(v, np.dot(self.i_cov, v))
+
+        return mus, sigmas
 
 
     cpdef double calc_lik( self, double[:] xs, double[:] ys ):
