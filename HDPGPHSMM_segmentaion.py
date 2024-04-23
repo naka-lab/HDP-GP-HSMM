@@ -62,6 +62,7 @@ class GPSegmentation():
 
         for n, z in enumerate(z_s):
             y = np.loadtxt(z, dtype=np.float)
+            y = y.reshape( y.shape[0], -1 )
             segm = []
             self.data.append( y )
 
